@@ -14,9 +14,9 @@ use serde::{Deserialize, Serialize};
 
 const PROTOCOL_ID: u64 = 7;
 
-const PLAYER_MOVE_SPEED: f32 = 1.0;
+const PLAYER_MOVE_SPEED: f64 = 1.0;
 
-#[derive(Debug, Default, Serialize, Deserialize, Component)]
+#[derive(Debug, Default, Serialize, Deserialize, Component, Resource)]
 struct PlayerInput {
     up: bool,
     down: bool,
@@ -29,7 +29,7 @@ struct Player {
     id: u64,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Resource)]
 struct Lobby {
     players: HashMap<u64, Entity>,
 }
@@ -114,7 +114,7 @@ fn server_update_system(
                 println!("Player {} connected.", id);
                 // Spawn player cube
                 let player_entity = commands
-                    .spawn_bundle(PbrBundle {
+                    .spawn(PbrBundle {
                         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
                         material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
                         transform: Transform::from_xyz(0.0, 0.5, 0.0),
@@ -159,7 +159,7 @@ fn server_update_system(
 }
 
 fn server_sync_players(mut server: ResMut<RenetServer>, query: Query<(&Transform, &Player)>) {
-    let mut players: HashMap<u64, [f32; 3]> = HashMap::new();
+    let mut players: HashMap<u64, [f64; 3]> = HashMap::new();
     for (transform, player) in query.iter() {
         players.insert(player.id, transform.translation.into());
     }
@@ -181,7 +181,7 @@ fn client_sync_players(
             ServerMessages::PlayerConnected { id } => {
                 println!("Player {} connected.", id);
                 let player_entity = commands
-                    .spawn_bundle(PbrBundle {
+                    .spawn(PbrBundle {
                         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
                         material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
                         transform: Transform::from_xyz(0.0, 0.5, 0.0),
@@ -201,7 +201,7 @@ fn client_sync_players(
     }
 
     while let Some(message) = client.receive_message(DefaultChannel::Unreliable) {
-        let players: HashMap<u64, [f32; 3]> = bincode::deserialize(&message).unwrap();
+        let players: HashMap<u64, [f64; 3]> = bincode::deserialize(&message).unwrap();
         for (player_id, translation) in players.iter() {
             if let Some(player_entity) = lobby.players.get(player_id) {
                 let transform = Transform {
@@ -217,13 +217,13 @@ fn client_sync_players(
 /// set up a simple 3D scene
 fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>) {
     // plane
-    commands.spawn_bundle(PbrBundle {
+    commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Plane { size: 5.0 })),
         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
         ..Default::default()
     });
     // light
-    commands.spawn_bundle(PointLightBundle {
+    commands.spawn(PointLightBundle {
         point_light: PointLight {
             intensity: 1500.0,
             shadows_enabled: true,
@@ -233,8 +233,8 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials
         ..Default::default()
     });
     // camera
-    commands.spawn_bundle(Camera3dBundle {
-        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(DVec3::ZERO, DVec3::Y),
         ..Default::default()
     });
 }
@@ -254,10 +254,10 @@ fn client_send_input(player_input: Res<PlayerInput>, mut client: ResMut<RenetCli
 
 fn move_players_system(mut query: Query<(&mut Transform, &PlayerInput)>, time: Res<Time>) {
     for (mut transform, input) in query.iter_mut() {
-        let x = (input.right as i8 - input.left as i8) as f32;
-        let y = (input.down as i8 - input.up as i8) as f32;
-        transform.translation.x += x * PLAYER_MOVE_SPEED * time.delta().as_secs_f32();
-        transform.translation.z += y * PLAYER_MOVE_SPEED * time.delta().as_secs_f32();
+        let x = (input.right as i8 - input.left as i8) as f64;
+        let y = (input.down as i8 - input.up as i8) as f64;
+        transform.translation.x += x * PLAYER_MOVE_SPEED * time.delta().as_secs_f64();
+        transform.translation.z += y * PLAYER_MOVE_SPEED * time.delta().as_secs_f64();
     }
 }
 

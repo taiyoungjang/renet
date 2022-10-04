@@ -13,4 +13,8 @@ edition = "2018"
 [dependencies]
 rechannel = { path = "../rechannel", version = "0.0.5" }
 renetcode = { path = "../renetcode", version = "0.0.5" }
+bevy = { path = "../../bevy", default-features = false, features = ["bevy_asset", "bevy_scene"] }
+bevy_reflect = { path = "../../bevy/crates/bevy_reflect" }
+bevy_ecs = { path = "../../bevy/crates/bevy_ecs" }
+bevy_ecs_macros = { path = "../../bevy/crates/bevy_ecs/macros" }
 log = "0.4.11"

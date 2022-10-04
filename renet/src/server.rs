@@ -13,10 +13,11 @@ use std::{
 use log::error;
 use rechannel::{disconnect_packet, error::DisconnectionReason, server::RechannelServer, Bytes};
 use renetcode::{NetcodeServer, ServerResult, NETCODE_KEY_BYTES, NETCODE_USER_DATA_BYTES};
+use bevy::prelude::Resource;
 
 /// A server that can establish authenticated connections with multiple clients.
 /// Can send/receive encrypted messages from/to them.
-#[derive(Debug)]
+#[derive(Debug,Resource)]
 pub struct RenetServer {
     socket: UdpSocket,
     reliable_server: RechannelServer<u64>,

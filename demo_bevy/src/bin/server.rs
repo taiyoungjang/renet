@@ -16,19 +16,19 @@ use demo_bevy::{
 };
 use renet_visualizer::RenetServerVisualizer;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Resource)]
 pub struct ServerLobby {
     pub players: HashMap<u64, Entity>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Resource)]
 struct NetworkTick(u32);
 
 // Clients last received ticks
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Resource)]
 struct ClientTicks(HashMap<u64, Option<u32>>);
 
-const PLAYER_MOVE_SPEED: f32 = 5.0;
+const PLAYER_MOVE_SPEED: f64 = 5.0;
 
 fn new_renet_server() -> RenetServer {
     let server_addr = "127.0.0.1:5000".parse().unwrap();
@@ -90,7 +90,7 @@ fn server_update_system(
 
                 // Initialize other players for this new client
                 for (entity, player, transform) in players.iter() {
-                    let translation: [f32; 3] = transform.translation.into();
+                    let translation: [f64; 3] = transform.translation.into();
                     let message = bincode::serialize(&ServerMessages::PlayerCreate {
                         id: player.id,
                         entity,
@@ -103,7 +103,7 @@ fn server_update_system(
                 // Spawn new player
                 let transform = Transform::from_xyz(0.0, 0.51, 0.0);
                 let player_entity = commands
-                    .spawn_bundle(PbrBundle {
+                    .spawn(PbrBundle {
                         mesh: meshes.add(Mesh::from(shape::Capsule::default())),
                         material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
                         transform,
@@ -119,7 +119,7 @@ fn server_update_system(
 
                 lobby.players.insert(*id, player_entity);
 
-                let translation: [f32; 3] = transform.translation.into();
+                let translation: [f64; 3] = transform.translation.into();
                 let message = bincode::serialize(&ServerMessages::PlayerCreate {
                     id: *id,
                     entity: player_entity,
@@ -217,9 +217,9 @@ fn server_network_sync(
 
 fn move_players_system(mut query: Query<(&mut Velocity, &PlayerInput)>) {
     for (mut velocity, input) in query.iter_mut() {
-        let x = (input.right as i8 - input.left as i8) as f32;
-        let y = (input.down as i8 - input.up as i8) as f32;
-        let direction = Vec2::new(x, y).normalize_or_zero();
+        let x = (input.right as i8 - input.left as i8) as f64;
+        let y = (input.down as i8 - input.up as i8) as f64;
+        let direction = DVec2::new(x, y).normalize_or_zero();
         velocity.linvel.x = direction.x * PLAYER_MOVE_SPEED;
         velocity.linvel.z = direction.y * PLAYER_MOVE_SPEED;
     }
@@ -227,8 +227,8 @@ fn move_players_system(mut query: Query<(&mut Velocity, &PlayerInput)>) {
 
 pub fn setup_simple_camera(mut commands: Commands) {
     // camera
-    commands.spawn_bundle(Camera3dBundle {
-        transform: Transform::from_xyz(-5.5, 5.0, 5.5).looking_at(Vec3::ZERO, Vec3::Y),
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(-5.5, 5.0, 5.5).looking_at(DVec3::ZERO, DVec3::Y),
         ..Default::default()
     });
 }

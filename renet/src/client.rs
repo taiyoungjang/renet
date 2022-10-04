@@ -11,6 +11,7 @@ use renetcode::{ConnectToken, NetcodeClient, NetcodeError, NETCODE_KEY_BYTES, NE
 use std::net::UdpSocket;
 use std::time::Duration;
 use std::{io, net::SocketAddr};
+use bevy::prelude::Resource;
 
 /// Configuration to establishe an secure ou unsecure connection with the server.
 #[allow(clippy::large_enum_variant)]
@@ -32,6 +33,7 @@ pub enum ClientAuthentication {
 
 /// A client that establishes an authenticated connection with a server.
 /// Can send/receive encrypted messages from/to the server.
+#[derive(Resource)]
 pub struct RenetClient {
     current_time: Duration,
     netcode_client: NetcodeClient,

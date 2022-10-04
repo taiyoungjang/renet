@@ -1,4 +1,5 @@
 use std::time::Duration;
+use bevy::math::DVec2;
 
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
@@ -13,7 +14,7 @@ pub struct Player {
     pub id: u64,
 }
 
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, Component)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, Component, Resource)]
 pub struct PlayerInput {
     pub most_recent_tick: Option<u32>,
     pub up: bool,
@@ -24,7 +25,7 @@ pub struct PlayerInput {
 
 #[derive(Debug, Serialize, Deserialize, Component)]
 pub enum PlayerCommand {
-    BasicAttack { cast_at: Vec3 },
+    BasicAttack { cast_at: DVec3 },
 }
 
 pub enum ClientChannel {
@@ -39,16 +40,16 @@ pub enum ServerChannel {
 
 #[derive(Debug, Serialize, Deserialize, Component)]
 pub enum ServerMessages {
-    PlayerCreate { entity: Entity, id: u64, translation: [f32; 3] },
+    PlayerCreate { entity: Entity, id: u64, translation: [f64; 3] },
     PlayerRemove { id: u64 },
-    SpawnProjectile { entity: Entity, translation: [f32; 3] },
+    SpawnProjectile { entity: Entity, translation: [f64; 3] },
     DespawnProjectile { entity: Entity },
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct NetworkedEntities {
     pub entities: Vec<Entity>,
-    pub translations: Vec<[f32; 3]>,
+    pub translations: Vec<[f64; 3]>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -128,7 +129,7 @@ pub fn server_connection_config() -> RenetConnectionConfig {
 pub fn setup_level(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>) {
     // plane
     commands
-        .spawn_bundle(PbrBundle {
+        .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Box::new(10., 1., 10.))),
             material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
             transform: Transform::from_xyz(0.0, -1.0, 0.0),
@@ -136,7 +137,7 @@ pub fn setup_level(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut
         })
         .insert(Collider::cuboid(5., 0.5, 5.));
     // light
-    commands.spawn_bundle(PointLightBundle {
+    commands.spawn(PointLightBundle {
         point_light: PointLight {
             intensity: 1500.0,
             shadows_enabled: true,
@@ -156,14 +157,14 @@ pub fn spawn_fireball(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
-    translation: Vec3,
-    mut direction: Vec3,
+    translation: DVec3,
+    mut direction: DVec3,
 ) -> Entity {
     if !direction.is_normalized() {
-        direction = Vec3::X;
+        direction = DVec3::X;
     }
     commands
-        .spawn_bundle(PbrBundle {
+        .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
                 radius: 0.1,
                 subdivisions: 5,
@@ -186,29 +187,29 @@ pub fn spawn_fireball(
 /// A 3D ray, with an origin and direction. The direction is guaranteed to be normalized.
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Ray3d {
-    pub(crate) origin: Vec3,
-    pub(crate) direction: Vec3,
+    pub(crate) origin: DVec3,
+    pub(crate) direction: DVec3,
 }
 
 impl Ray3d {
-    pub fn new(origin: Vec3, direction: Vec3) -> Self {
+    pub fn new(origin: DVec3, direction: DVec3) -> Self {
         Ray3d { origin, direction }
     }
 
     pub fn from_screenspace(windows: &Res<Windows>, camera: &Camera, camera_transform: &GlobalTransform) -> Option<Self> {
         let window = windows.get_primary().unwrap();
         let cursor_position = match window.cursor_position() {
-            Some(c) => c,
+            Some(c) => DVec2::new(c.x as f64, c.y as f64),
             None => return None,
         };
 
         let view = camera_transform.compute_matrix();
-        let screen_size = camera.logical_target_size()?;
+        let screen_size = {let v = camera.logical_target_size()?; DVec2::new(v.x as f64,v.y as f64) };
         let projection = camera.projection_matrix();
-        let far_ndc = projection.project_point3(Vec3::NEG_Z).z;
-        let near_ndc = projection.project_point3(Vec3::Z).z;
-        let cursor_ndc = (cursor_position / screen_size) * 2.0 - Vec2::ONE;
-        let ndc_to_world: Mat4 = view * projection.inverse();
+        let far_ndc = projection.project_point3(DVec3::NEG_Z).z;
+        let near_ndc = projection.project_point3(DVec3::Z).z;
+        let cursor_ndc = (cursor_position / screen_size) * 2.0 - DVec2::ONE;
+        let ndc_to_world: DMat4 = view * projection.inverse();
         let near = ndc_to_world.project_point3(cursor_ndc.extend(near_ndc));
         let far = ndc_to_world.project_point3(cursor_ndc.extend(far_ndc));
         let ray_direction = far - near;
@@ -216,11 +217,11 @@ impl Ray3d {
         Some(Ray3d::new(near, ray_direction))
     }
 
-    pub fn intersect_y_plane(&self, y_offset: f32) -> Option<Vec3> {
-        let plane_normal = Vec3::Y;
-        let plane_origin = Vec3::new(0.0, y_offset, 0.0);
+    pub fn intersect_y_plane(&self, y_offset: f64) -> Option<DVec3> {
+        let plane_normal = DVec3::Y;
+        let plane_origin = DVec3::new(0.0, y_offset, 0.0);
         let denominator = self.direction.dot(plane_normal);
-        if denominator.abs() > f32::EPSILON {
+        if denominator.abs() > f64::EPSILON {
             let point_to_point = plane_origin * y_offset - self.origin;
             let intersect_dist = plane_normal.dot(point_to_point) / denominator;
             let intersect_position = self.direction * intersect_dist + self.origin;
